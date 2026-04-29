@@ -616,13 +616,28 @@
                 // Atualiza o nome novamente usando a função de cores
                 document.getElementById('user-display-name').innerHTML = formatarNomeCores(novoNome);
             }
+            localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
             mostrarMsg('prof-msg', 'Perfil salvo!', 'success');
             setTimeout(() => document.getElementById('prof-msg').style.display = 'none', 3000);
         }
+
+        // === TRADUÇÃO POR VOZ E HISTÓRICO ===
+        function iniciarVoz() {
             const out = document.getElementById('texto-voz');
             const btn = document.getElementById('btn-mic');
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
             if (!SR) return out.innerText = "Navegador incompatível com reconhecimento de voz.";
+            
+            const rec = new SR();
+            rec.lang = 'pt-BR';
+            
+            rec.onstart = () => { btn.innerText = "Gravando Áudio..."; btn.style.background = "var(--error-color)"; out.innerText = "Ouvindo..."; };
+            rec.onresult = (e) => {
+                const texto = e.results[0][0].transcript;
+                out.innerText = texto;
+                btn.innerText = "Iniciar Microfone"; btn.style.background = "var(--primary)";
+                
                 usuarioLogado.historico.push({ texto: texto, data: new Date().toLocaleString() });
                 localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
             };
