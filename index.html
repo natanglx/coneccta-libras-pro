@@ -7,9 +7,9 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
 
     <style>
         /* === VARIÁVEIS E TEMAS === */
@@ -893,7 +893,7 @@
 
             let hands, camera;
             try {
-                hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+                hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
                 hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
             } catch (err) {
                 return falhar("Erro ao carregar o modelo de IA: " + err.message);
@@ -954,6 +954,11 @@
 
             camera.start().then(() => {
                 cameraOn = true; btnCam.style.display = "none"; liveTag.classList.add('show');
+                setTimeout(() => {
+                    if (cameraOn && semMaoDesde !== null && candidatoLetra === null && ultimaLetraConfirmada === null) {
+                        document.getElementById('palavra-formada').innerHTML = "Nenhuma mão detectada ainda. Aproxime bem a mão da câmera, em um ambiente iluminado e com fundo neutro.";
+                    }
+                }, 7000);
             }).catch(e => {
                 const nome = e && e.name;
                 const mensagens = {
