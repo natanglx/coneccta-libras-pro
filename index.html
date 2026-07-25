@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ConectaLibras Pro</title>
+    <title>ConectaLibras</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
@@ -26,6 +26,7 @@
             --accent-2: #3b82f6; /* Azul para o segundo nome */
             --error-color: #ef4444;
             --success-color: #22c55e;
+            --header-bg: rgba(10, 10, 10, 0.85);
         }
 
         body.light-mode {
@@ -35,6 +36,7 @@
             --text-main: #0f172a;
             --text-sub: #475569;
             --border-color: #cbd5e1;
+            --header-bg: rgba(248, 250, 252, 0.85);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
@@ -42,18 +44,24 @@
 
         /* === BOTÕES GERAIS E EFEITO HOVER DOS CARDS === */
         .btn-primary { background: var(--primary); color: #000; font-weight: 700; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; transition: all 0.3s ease; margin-top: 10px; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 8px 20px rgba(234,179,8,0.25); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+
+        button:focus-visible, input:focus-visible, .nav-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+        }
         
-        .hover-expand { transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease, border-color 0.3s ease; z-index: 1; }
-        /* Adiciona a expansão, a sombra e a BORDA AMARELA */
+        .hover-expand { transition: box-shadow 0.3s ease, border-color 0.3s ease; z-index: 1; }
+        /* Sombra e borda amarela ao passar o mouse/tocar, sem aumentar o tamanho do quadrado */
         .hover-expand:hover { 
-            transform: scale(1.05); 
-            box-shadow: 0 15px 30px rgba(0,0,0,0.4); 
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35); 
             border-color: var(--primary) !important; 
-            z-index: 10; 
         }
 
         /* === CABEÇALHO === */
-        header { position: fixed; top: 0; width: 100%; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; z-index: 1000; background: rgba(var(--bg-body), 0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
+        header { position: fixed; top: 0; width: 100%; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; z-index: 1000; background: var(--header-bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 20px rgba(0,0,0,0.15); }
         .header-left { display: flex; align-items: center; gap: 15px; }
 
         .menu-btn { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 5px; }
@@ -61,7 +69,6 @@
 
         @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
         .logo { font-size: 1.5rem; font-weight: 800; animation: slideInLeft 1s ease forwards; }
-        .logo .pro { background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .theme-toggle { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; }
 
         /* === SIDEBAR (MENU LATERAL) === */
@@ -111,7 +118,7 @@
         .info-header h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 15px; }
         .info-header p { color: var(--text-sub); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
         .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
-        .feature-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 20px; }
+        .feature-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
         .feature-card h3 { font-size: 1.3rem; margin-bottom: 15px; color: var(--text-main); }
         .feature-number { font-size: 3rem; font-weight: 800; color: var(--bg-input); -webkit-text-stroke: 1px var(--border-color); margin-bottom: 10px; display: inline-block; }
 
@@ -139,33 +146,21 @@
         @keyframes slideLeftCenter { 0% { transform: translateY(-30px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
         .welcome-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; margin-bottom: 20px; animation: slideLeftCenter 0.8s ease forwards; color: var(--text-main); }
         
-        .btn-tutorial { 
-            background: var(--bg-card); 
-            color: var(--text-main); 
-            border: 1px solid var(--border-color); 
-            padding: 12px 24px; 
-            border-radius: 30px; /* Mais arredondado */
-            font-size: 1.1rem; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 0 auto 20px auto;
-        }
-        .btn-tutorial:hover { border-color: var(--primary); color: var(--primary); }
+        .tutorial-toggle-wrap { text-align: center; margin: 0 auto 20px auto; }
+        .tutorial-label { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+        .btn-tutorial-link { background: none; border: none; color: var(--accent-2); font-size: 1rem; font-weight: 700; cursor: pointer; padding: 4px 8px; text-decoration: underline; }
+        .btn-tutorial-link:hover { color: var(--primary); }
 
         .tutorial-content { width: 100%; max-height: 0; overflow: hidden; transition: max-height 0.8s cubic-bezier(0, 1, 0, 1); }
         .tutorial-content.open { max-height: 1500px; }
         .tutorial-inner { background: transparent; padding: 10px 0; margin-top: 10px; }
 
-        /* Grid dos Quadradinhos do Tutorial */
-        .tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
-        .tutorial-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; position: relative; overflow: hidden; text-align: left; display: flex; flex-direction: column; justify-content: center; min-height: 160px; }
-        .tutorial-card .t-number { position: absolute; top: -5px; right: 5px; font-size: 4rem; font-weight: 800; color: var(--bg-body); -webkit-text-stroke: 1px var(--border-color); opacity: 0.3; z-index: 1; }
-        .tutorial-card h4 { color: var(--primary); font-size: 1.2rem; margin-bottom: 10px; z-index: 2; }
-        .tutorial-card p { color: var(--text-sub); font-size: 0.95rem; line-height: 1.5; z-index: 2; margin: 0; }
+        /* Grid dos Quadradinhos do Tutorial - versão compacta */
+        .tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .tutorial-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; position: relative; overflow: hidden; text-align: left; display: flex; flex-direction: column; justify-content: flex-start; min-height: 110px; gap: 3px; }
+        .tutorial-card .t-badge { font-size: 0.65rem; font-weight: 800; color: var(--text-sub); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+        .tutorial-card h4 { color: var(--primary); font-size: 0.98rem; margin-bottom: 2px; z-index: 2; }
+        .tutorial-card p { color: var(--text-sub); font-size: 0.78rem; line-height: 1.4; z-index: 2; margin: 0; }
 
         /* Modulos / UI Específica */
         .section-title { font-size: 1.8rem; margin-bottom: 20px; color: var(--text-main); }
@@ -182,7 +177,23 @@
         /* Câmera IA */
         .video-box { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; margin-top: 20px; border: 1px solid var(--border-color); }
         .video-box video, .video-box canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .letra-destaque { font-size: 4rem; font-weight: 800; color: var(--primary); margin-top: 10px; }
+
+        .live-tag { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.55); color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; z-index: 5; opacity: 0; transition: opacity 0.3s; }
+        .live-tag.show { opacity: 1; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error-color); animation: pulseDot 1.4s ease-in-out infinite; }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+
+        .letra-destaque { font-size: 4rem; font-weight: 800; color: var(--primary); margin-top: 10px; transition: color 0.15s, transform 0.15s; }
+        .letra-destaque.confirmando { color: var(--accent-2); }
+        .letra-destaque.confirmado { color: var(--success-color); transform: scale(1.15); }
+
+        .barra-confirmacao { width: 100%; height: 6px; background: var(--bg-card); border-radius: 4px; margin-top: 15px; overflow: hidden; }
+        .barra-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-2), var(--primary)); border-radius: 4px; transition: width 0.05s linear; }
+
+        .palavra-texto { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; min-height: 30px; font-size: 1.4rem; font-weight: 700; letter-spacing: 1px; word-break: break-word; color: var(--text-main); }
+        .palavra-acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .btn-mini { flex: 1; min-width: 75px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
+        .btn-mini-primary { background: var(--primary); color: #000; border-color: var(--primary); font-weight: 800; }
 
         /* Dicionário */
         .dic-tabs { display: flex; gap: 10px; margin-bottom: 25px; }
@@ -215,7 +226,7 @@
             <button class="menu-btn" id="btn-menu" onclick="toggleSidebar()">
                 <div class="bar"></div><div class="bar"></div><div class="bar"></div>
             </button>
-            <div class="logo">ConectaLibras <span class="pro">Pro</span></div>
+            <div class="logo">ConectaLibras</div>
         </div>
         <button class="theme-toggle" onclick="toggleTheme()" id="btn-theme">Tema Claro</button>
     </header>
@@ -293,7 +304,7 @@
             <div class="info-header scroll-hidden">
                 <h2 style="font-size: 0.8rem; color: var(--primary); text-transform: uppercase; letter-spacing: 2px;">O que fazemos</h2>
                 <h2 style="margin-top: 10px;">Para cada barreira, uma solução.</h2>
-                <p>O ConectaLibras Pro unifica ferramentas avançadas de IA para garantir que ninguém fique de fora da conversa.</p>
+                <p>O ConectaLibras unifica ferramentas avançadas de IA para garantir que ninguém fique de fora da conversa.</p>
             </div>
 
             <div class="features-grid">
@@ -322,42 +333,42 @@
             <div id="tab-home" class="tab-content active">
                 <h1 class="welcome-title">Bem-vindo(a), <span id="user-display-name">Usuário</span>!</h1>
                 
-                <button class="btn-tutorial" onclick="toggleTutorial()">
-                    Como utilizar o site? 
-                    <span style="font-size: 0.8em; margin-left: 5px;">▼</span>
-                </button>
+                <div class="tutorial-toggle-wrap">
+                    <p class="tutorial-label">Como utilizar o site?</p>
+                    <button class="btn-tutorial-link" onclick="toggleTutorial()">Aperte aqui</button>
+                </div>
                 
                 <div class="tutorial-content" id="tutorial-box">
                     <div class="tutorial-inner">
                         <div class="tutorial-grid">
                             <div class="tutorial-card hover-expand">
-                                <span class="t-number">01</span>
+                                <span class="t-badge">1</span>
                                 <h4>Perfil</h4>
-                                <p>Altere seu nome de exibição e adicione uma foto da sua galeria.</p>
+                                <p>Adicione uma foto e edite seu nome de exibição.</p>
                             </div>
                             
                             <div class="tutorial-card hover-expand">
-                                <span class="t-number">02</span>
+                                <span class="t-badge">2</span>
                                 <h4>Tradução por Voz</h4>
-                                <p>Fale no microfone e veja o avatar converter tudo para sinais em tempo real.</p>
+                                <p>Fale e veja o texto e o avatar em Libras juntos.</p>
                             </div>
                             
                             <div class="tutorial-card hover-expand">
-                                <span class="t-number">03</span>
+                                <span class="t-badge">3</span>
                                 <h4>Câmera IA</h4>
-                                <p>A inteligência artificial mapeia as articulações da sua mão para ler a letra feita.</p>
+                                <p>Faça letras em Libras e monte palavras com a mão.</p>
                             </div>
                             
                             <div class="tutorial-card hover-expand">
-                                <span class="t-number">04</span>
+                                <span class="t-badge">4</span>
                                 <h4>Dicionário</h4>
-                                <p>Consulte rapidamente o alfabeto de Libras e sinais básicos do cotidiano.</p>
+                                <p>Consulte o alfabeto e sinais do dia a dia.</p>
                             </div>
                             
                             <div class="tutorial-card hover-expand">
-                                <span class="t-number">05</span>
+                                <span class="t-badge">5</span>
                                 <h4>Histórico</h4>
-                                <p>Acesse o registro de todas as traduções que você já realizou no módulo de voz.</p>
+                                <p>Reveja todas as traduções que você já fez.</p>
                             </div>
                         </div>
                     </div>
@@ -395,15 +406,27 @@
             <div id="tab-cam" class="tab-content">
                 <h2 class="section-title">Câmera IA</h2>
                 <div class="feature-card">
-                    <p class="desc-text">A IA mapeará a geometria da sua mão.</p>
+                    <p class="desc-text">Mostre uma letra do alfabeto de Libras para a câmera e segure firme por um instante para confirmar. As letras confirmadas vão se juntando no quadro abaixo até formar a palavra.</p>
                     <button class="btn-primary hover-expand" id="btn-cam" onclick="ligarCameraIA()">Ligar Câmera</button>
                     <div class="video-box">
                         <video id="video-ia" playsinline autoplay muted></video>
                         <canvas id="canvas-ia"></canvas>
+                        <div class="live-tag" id="live-tag"><span class="live-dot"></span>AO VIVO</div>
                     </div>
                     <div class="output-box text-center">
-                        <p class="desc-text">Letra Identificada:</p>
+                        <p class="desc-text">Letra identificada:</p>
                         <div id="letra-ia" class="letra-destaque">-</div>
+                        <div class="barra-confirmacao"><div id="barra-fill" class="barra-fill"></div></div>
+                    </div>
+                    <div class="output-box">
+                        <p class="desc-text">Palavra formada:</p>
+                        <div id="palavra-formada" class="palavra-texto">&nbsp;</div>
+                        <div class="palavra-acoes">
+                            <button class="btn-mini hover-expand" onclick="adicionarEspaco()">␣ Espaço</button>
+                            <button class="btn-mini hover-expand" onclick="apagarLetra()">⌫ Apagar</button>
+                            <button class="btn-mini hover-expand" onclick="limparPalavra()">✕ Limpar</button>
+                            <button class="btn-mini btn-mini-primary hover-expand" onclick="salvarPalavraHistorico(this)">✓ Salvar</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -625,24 +648,74 @@
         function iniciarVoz() {
             const out = document.getElementById('texto-voz');
             const btn = document.getElementById('btn-mic');
+
+            function resetBotao() {
+                btn.innerText = "Iniciar Microfone";
+                btn.style.background = "var(--primary)";
+            }
+
+            // Câmera e microfone só funcionam em contexto seguro (https:// ou localhost).
+            // Abrir o arquivo direto (file://) ou por link content:// do Android bloqueia o microfone.
+            if (!window.isSecureContext) {
+                out.innerText = "O microfone só funciona em um site publicado com HTTPS (ex.: GitHub Pages, Netlify) ou em localhost. Abrir o arquivo direto do celular/computador não funciona.";
+                return;
+            }
+
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            
-            if (!SR) return out.innerText = "Navegador incompatível com reconhecimento de voz.";
-            
+            if (!SR) { out.innerText = "Este navegador não tem suporte a reconhecimento de voz. Tente no Google Chrome."; return; }
+
+            if (!navigator.onLine) {
+                out.innerText = "O reconhecimento de voz precisa de internet ativa para funcionar. Verifique sua conexão.";
+                return;
+            }
+
+            let concluido = false;
             const rec = new SR();
             rec.lang = 'pt-BR';
-            
-            rec.onstart = () => { btn.innerText = "Gravando Áudio..."; btn.style.background = "var(--error-color)"; out.innerText = "Ouvindo..."; };
+            rec.continuous = false;
+            rec.interimResults = false;
+
+            rec.onstart = () => { btn.innerText = "Gravando Áudio..."; btn.style.background = "var(--error-color)"; out.innerText = "Ouvindo... fale agora."; };
+
             rec.onresult = (e) => {
+                concluido = true;
                 const texto = e.results[0][0].transcript;
                 out.innerText = texto;
-                btn.innerText = "Iniciar Microfone"; btn.style.background = "var(--primary)";
-                
+                resetBotao();
+
                 usuarioLogado.historico.push({ texto: texto, data: new Date().toLocaleString() });
                 localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
             };
-            rec.onerror = () => { out.innerText = "Erro ao capturar voz."; btn.innerText = "Iniciar Microfone"; btn.style.background = "var(--primary)"; };
-            rec.start();
+
+            rec.onerror = (e) => {
+                concluido = true;
+                const mensagens = {
+                    'not-allowed': "Permissão de microfone negada. Toque no cadeado/ícone ao lado do endereço do site e libere o microfone.",
+                    'service-not-allowed': "Permissão de microfone negada pelo navegador.",
+                    'no-speech': "Nenhuma fala foi detectada. Toque novamente e fale mais perto do microfone.",
+                    'audio-capture': "Nenhum microfone foi encontrado neste dispositivo.",
+                    'network': "Falha de rede durante o reconhecimento de voz. Verifique sua internet.",
+                    'aborted': "Gravação cancelada.",
+                };
+                out.innerText = mensagens[e.error] || `Erro ao capturar voz (${e.error}).`;
+                resetBotao();
+            };
+
+            rec.onend = () => {
+                // Garante que o botão nunca fique travado em "Gravando Áudio...",
+                // mesmo se o navegador encerrar sem disparar onresult nem onerror.
+                if (!concluido) {
+                    out.innerText = "Nenhuma fala foi reconhecida. Tente novamente.";
+                    resetBotao();
+                }
+            };
+
+            try {
+                rec.start();
+            } catch (err) {
+                out.innerText = "Não foi possível iniciar o microfone: " + err.message;
+                resetBotao();
+            }
         }
 
         function renderizarHistorico() {
@@ -665,54 +738,233 @@
             document.getElementById('dic-' + tipo).classList.add('active');
         }
 
-        // === CÂMERA IA ===
+        // === CÂMERA IA - RECONHECIMENTO DE LETRAS EM LIBRAS ===
         let cameraOn = false;
+        let palavraFormada = "";
+        let candidatoLetra = null;
+        let inicioCandidato = 0;
+        let ultimaLetraConfirmada = null;
+        let semMaoDesde = null;
+        let espacoAutoAdicionado = false;
+        const TEMPO_CONFIRMACAO_MS = 650; // tempo segurando a mesma letra para ela ser confirmada
+        const TEMPO_ESPACO_AUTO_MS = 1600; // tempo sem mão na câmera para adicionar espaço automático
+
+        function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+        // Ângulo (em graus) formado no ponto "b" pelos segmentos b->a e b->c
+        function calcAngulo(a, b, c) {
+            const abx = a.x - b.x, aby = a.y - b.y;
+            const cbx = c.x - b.x, cby = c.y - b.y;
+            const dot = abx * cbx + aby * cby;
+            const magAB = Math.hypot(abx, aby) || 1e-6;
+            const magCB = Math.hypot(cbx, cby) || 1e-6;
+            const cos = Math.min(1, Math.max(-1, dot / (magAB * magCB)));
+            return Math.acos(cos) * (180 / Math.PI);
+        }
+
+        // Classifica a letra a partir dos 21 pontos da mão do MediaPipe.
+        // Heurística por geometria (ângulos das juntas + distâncias normalizadas pelo tamanho da mão).
+        // Reconhece formas estáticas: A, B, D, F, I, L, O, S, U, V, W, Y, 1 e 5.
+        // Letras que dependem de movimento (H, J, K, X, Z, entre outras) não são cobertas por este método.
+        function classificarLetra(m) {
+            const tamanhoMao = dist(m[0], m[9]) || 0.001;
+
+            const indicador = calcAngulo(m[5], m[6], m[8]) > 155;
+            const medio = calcAngulo(m[9], m[10], m[12]) > 155;
+            const anelar = calcAngulo(m[13], m[14], m[16]) > 155;
+            const minimo = calcAngulo(m[17], m[18], m[20]) > 155;
+
+            const polegarAberto = (dist(m[4], m[17]) / tamanhoMao) > 0.9;
+            const pinca = (dist(m[4], m[8]) / tamanhoMao) < 0.35;
+            const dedosJuntos = (dist(m[8], m[12]) / tamanhoMao) < 0.35;
+            const polegarTocaMedio = (dist(m[4], m[12]) / tamanhoMao) < 0.4;
+
+            if (pinca && !medio && !anelar && !minimo) return "O";
+            if (pinca && medio && anelar && minimo) return "F";
+
+            if (!indicador && !medio && !anelar && !minimo) return polegarAberto ? "A" : "S";
+            if (!indicador && !medio && !anelar && minimo) return polegarAberto ? "Y" : "I";
+            if (indicador && !medio && !anelar && !minimo) {
+                if (polegarAberto) return "L";
+                return polegarTocaMedio ? "D" : "1";
+            }
+            if (indicador && medio && !anelar && !minimo) return dedosJuntos ? "U" : "V";
+            if (indicador && medio && anelar && !minimo) return "W";
+            if (indicador && medio && anelar && minimo) return polegarAberto ? "5" : "B";
+
+            return "...";
+        }
+
+        function mostrarLetraAtual(letra, confirmando) {
+            const box = document.getElementById('letra-ia');
+            box.innerText = letra;
+            box.className = confirmando ? "letra-destaque confirmando" : "letra-destaque";
+        }
+
+        function atualizarBarra(pct) {
+            const barra = document.getElementById('barra-fill');
+            if (barra) barra.style.width = pct + "%";
+        }
+
+        function atualizarPalavra() {
+            document.getElementById('palavra-formada').innerHTML = palavraFormada.length > 0 ? palavraFormada : '&nbsp;';
+        }
+
+        function confirmarLetra(letra) {
+            palavraFormada += letra;
+            ultimaLetraConfirmada = letra;
+            candidatoLetra = null;
+            atualizarBarra(0);
+            atualizarPalavra();
+            const box = document.getElementById('letra-ia');
+            box.className = "letra-destaque confirmado";
+            setTimeout(() => { box.className = "letra-destaque"; }, 350);
+        }
+
+        function resetTudoSemMao() {
+            mostrarLetraAtual("-", false);
+            candidatoLetra = null;
+            atualizarBarra(0);
+            if (semMaoDesde === null) {
+                semMaoDesde = Date.now();
+            } else if (!espacoAutoAdicionado && Date.now() - semMaoDesde > TEMPO_ESPACO_AUTO_MS && palavraFormada.length > 0 && !palavraFormada.endsWith(" ")) {
+                palavraFormada += " ";
+                espacoAutoAdicionado = true;
+                atualizarPalavra();
+            }
+        }
+
+        function adicionarEspaco() {
+            if (palavraFormada.length > 0 && !palavraFormada.endsWith(" ")) {
+                palavraFormada += " ";
+                atualizarPalavra();
+            }
+        }
+
+        function apagarLetra() {
+            palavraFormada = palavraFormada.slice(0, -1);
+            atualizarPalavra();
+        }
+
+        function limparPalavra() {
+            palavraFormada = "";
+            atualizarPalavra();
+        }
+
+        function salvarPalavraHistorico(btn) {
+            const texto = palavraFormada.trim();
+            if (!texto || !usuarioLogado) return;
+            usuarioLogado.historico.push({ texto: `[Câmera] ${texto}`, data: new Date().toLocaleString() });
+            localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
+            const original = btn.innerText;
+            btn.innerText = "✓ Salvo!";
+            setTimeout(() => btn.innerText = original, 1500);
+        }
+
         async function ligarCameraIA() {
             if(cameraOn) return;
             const video = document.getElementById('video-ia');
             const canvas = document.getElementById('canvas-ia');
             const ctx = canvas.getContext('2d');
             const btnCam = document.getElementById('btn-cam');
+            const liveTag = document.getElementById('live-tag');
             const boxLetra = document.getElementById('letra-ia');
+
+            function falhar(msg) {
+                btnCam.innerText = "Tentar Novamente";
+                boxLetra.innerText = "-";
+                boxLetra.className = "letra-destaque";
+                document.getElementById('palavra-formada').innerHTML = msg;
+            }
+
+            // Câmera só funciona em contexto seguro (https:// ou localhost).
+            // Abrir o arquivo direto (file://) ou por link content:// do Android bloqueia a câmera.
+            if (!window.isSecureContext) {
+                return falhar("A câmera só funciona em um site publicado com HTTPS (ex.: GitHub Pages, Netlify) ou em localhost. Abrir o arquivo direto do celular/computador não funciona.");
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return falhar("Este navegador não tem suporte a acesso à câmera.");
+            }
+            if (typeof Hands === 'undefined' || typeof Camera === 'undefined' || typeof drawConnectors === 'undefined') {
+                return falhar("Não foi possível carregar a biblioteca de IA (MediaPipe). Verifique sua conexão com a internet e recarregue a página.");
+            }
 
             btnCam.innerText = "Carregando Modelos...";
 
-            const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-            hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+            let hands, camera;
+            try {
+                hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+                hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+            } catch (err) {
+                return falhar("Erro ao carregar o modelo de IA: " + err.message);
+            }
 
             hands.onResults((results) => {
-                ctx.save();
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    const marks = results.multiHandLandmarks[0];
-                    drawConnectors(ctx, marks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
-                    drawLandmarks(ctx, marks, {color: '#eab308', lineWidth: 1});
-                    
-                    const dV = [
-                        marks[4].x < marks[3].x, marks[8].y < marks[6].y, marks[12].y < marks[10].y, marks[16].y < marks[14].y, marks[20].y < marks[18].y
-                    ];
-                    const abertos = dV.filter(Boolean).length;
-                    
-                    if(abertos === 0) boxLetra.innerText = "A / S";
-                    else if(abertos === 1 && dV[1]) boxLetra.innerText = "D / 1";
-                    else if(abertos === 1 && dV[4]) boxLetra.innerText = "I";
-                    else if(abertos === 2 && dV[1] && dV[2]) boxLetra.innerText = "V";
-                    else if(abertos === 2 && dV[0] && dV[1]) boxLetra.innerText = "L";
-                    else if(abertos === 3 && dV[1] && dV[2] && dV[3]) boxLetra.innerText = "W";
-                    else if(abertos === 5) boxLetra.innerText = "5";
-                    else boxLetra.innerText = "...";
-                    
-                } else { boxLetra.innerText = "-"; }
-                ctx.restore();
+                try {
+                    ctx.save();
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                        const marks = results.multiHandLandmarks[0];
+                        drawConnectors(ctx, marks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
+                        drawLandmarks(ctx, marks, {color: '#eab308', lineWidth: 1});
+
+                        semMaoDesde = null;
+                        espacoAutoAdicionado = false;
+
+                        const letra = classificarLetra(marks);
+
+                        if (letra === ultimaLetraConfirmada) {
+                            // ainda segurando a última letra já confirmada: não conta de novo
+                            candidatoLetra = null;
+                            atualizarBarra(0);
+                            mostrarLetraAtual(letra, false);
+                        } else if (letra === "...") {
+                            candidatoLetra = null;
+                            atualizarBarra(0);
+                            mostrarLetraAtual("...", false);
+                        } else if (letra === candidatoLetra) {
+                            const decorrido = Date.now() - inicioCandidato;
+                            atualizarBarra(Math.min(100, (decorrido / TEMPO_CONFIRMACAO_MS) * 100));
+                            mostrarLetraAtual(letra, true);
+                            if (decorrido >= TEMPO_CONFIRMACAO_MS) confirmarLetra(letra);
+                        } else {
+                            candidatoLetra = letra;
+                            inicioCandidato = Date.now();
+                            atualizarBarra(0);
+                            mostrarLetraAtual(letra, false);
+                        }
+                    } else {
+                        resetTudoSemMao();
+                    }
+                    ctx.restore();
+                } catch (err) {
+                    console.error("Erro no processamento do quadro:", err);
+                }
             });
 
-            const camera = new Camera(video, {
-                onFrame: async () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; await hands.send({image: video}); },
-                width: 640, height: 480
-            });
+            try {
+                camera = new Camera(video, {
+                    onFrame: async () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; await hands.send({image: video}); },
+                    width: 640, height: 480
+                });
+            } catch (err) {
+                return falhar("Erro ao inicializar a câmera: " + err.message);
+            }
 
-            camera.start().then(() => { cameraOn = true; btnCam.style.display = "none"; })
-                  .catch(e => { btnCam.innerText = "Erro na Câmera"; boxLetra.innerText = "Permissão Negada."; });
+            camera.start().then(() => {
+                cameraOn = true; btnCam.style.display = "none"; liveTag.classList.add('show');
+            }).catch(e => {
+                const nome = e && e.name;
+                const mensagens = {
+                    'NotAllowedError': "Permissão de câmera negada. Toque no cadeado/ícone ao lado do endereço do site e libere a câmera.",
+                    'NotFoundError': "Nenhuma câmera foi encontrada neste dispositivo.",
+                    'NotReadableError': "A câmera está sendo usada por outro aplicativo. Feche-o e tente novamente.",
+                    'OverconstrainedError': "A câmera do dispositivo não atende aos requisitos solicitados.",
+                };
+                falhar(mensagens[nome] || ("Erro ao acessar a câmera: " + (e && e.message ? e.message : e)));
+                btnCam.style.display = "block";
+            });
         }
     </script>
 </body>
