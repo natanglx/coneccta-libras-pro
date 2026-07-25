@@ -7,9 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
+    <!-- MediaPipe Tasks Vision (biblioteca atual do Google) é carregada dinamicamente dentro de ligarCameraIA() -->
 
     <style>
         /* === VARIÁVEIS E TEMAS === */
@@ -740,6 +738,8 @@
 
         // === CÂMERA IA - RECONHECIMENTO DE LETRAS EM LIBRAS ===
         let cameraOn = false;
+        let loopAtivo = false;
+        let handLandmarker = null;
         let palavraFormada = "";
         let candidatoLetra = null;
         let inicioCandidato = 0;
@@ -748,6 +748,26 @@
         let espacoAutoAdicionado = false;
         const TEMPO_CONFIRMACAO_MS = 650; // tempo segurando a mesma letra para ela ser confirmada
         const TEMPO_ESPACO_AUTO_MS = 1600; // tempo sem mão na câmera para adicionar espaço automático
+
+        // Pares de pontos conectados no esqueleto da mão (21 pontos do MediaPipe)
+        const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+        function desenharMao(ctx, marks, w, h) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffffff';
+            HAND_CONNECTIONS.forEach(([a, b]) => {
+                ctx.beginPath();
+                ctx.moveTo(marks[a].x * w, marks[a].y * h);
+                ctx.lineTo(marks[b].x * w, marks[b].y * h);
+                ctx.stroke();
+            });
+            ctx.fillStyle = '#eab308';
+            marks.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x * w, p.y * h, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
 
         function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
@@ -872,6 +892,7 @@
 
             function falhar(msg) {
                 btnCam.innerText = "Tentar Novamente";
+                btnCam.style.display = "block";
                 boxLetra.innerText = "-";
                 boxLetra.className = "letra-destaque";
                 document.getElementById('palavra-formada').innerHTML = msg;
@@ -885,91 +906,122 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 return falhar("Este navegador não tem suporte a acesso à câmera.");
             }
-            if (typeof Hands === 'undefined' || typeof Camera === 'undefined' || typeof drawConnectors === 'undefined') {
-                return falhar("Não foi possível carregar a biblioteca de IA (MediaPipe). Verifique sua conexão com a internet e recarregue a página.");
-            }
 
-            btnCam.innerText = "Carregando Modelos...";
+            btnCam.innerText = "Carregando Modelos de IA...";
+            btnCam.disabled = true;
 
-            let hands, camera;
+            const VISION_VERSAO = "0.10.35";
+            const MODELO_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+            // 1) Carrega a biblioteca de IA atual do Google (MediaPipe Tasks Vision)
+            let HandLandmarker, FilesetResolver;
             try {
-                hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
-                hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+                const mod = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_VERSAO}/vision_bundle.mjs`);
+                HandLandmarker = mod.HandLandmarker;
+                FilesetResolver = mod.FilesetResolver;
             } catch (err) {
-                return falhar("Erro ao carregar o modelo de IA: " + err.message);
+                btnCam.disabled = false;
+                return falhar("Não foi possível carregar a biblioteca de IA. Verifique sua conexão com a internet e recarregue a página.");
             }
 
-            hands.onResults((results) => {
+            // 2) Carrega o modelo treinado de reconhecimento de mãos (tenta GPU, cai para CPU se não suportado)
+            try {
+                const vision = await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_VERSAO}/wasm`);
+                const opcoesBase = { runningMode: "VIDEO", numHands: 1 };
                 try {
-                    ctx.save();
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                        const marks = results.multiHandLandmarks[0];
-                        drawConnectors(ctx, marks, HAND_CONNECTIONS, {color: '#ffffff', lineWidth: 2});
-                        drawLandmarks(ctx, marks, {color: '#eab308', lineWidth: 1});
-
-                        semMaoDesde = null;
-                        espacoAutoAdicionado = false;
-
-                        const letra = classificarLetra(marks);
-
-                        if (letra === ultimaLetraConfirmada) {
-                            // ainda segurando a última letra já confirmada: não conta de novo
-                            candidatoLetra = null;
-                            atualizarBarra(0);
-                            mostrarLetraAtual(letra, false);
-                        } else if (letra === "...") {
-                            candidatoLetra = null;
-                            atualizarBarra(0);
-                            mostrarLetraAtual("...", false);
-                        } else if (letra === candidatoLetra) {
-                            const decorrido = Date.now() - inicioCandidato;
-                            atualizarBarra(Math.min(100, (decorrido / TEMPO_CONFIRMACAO_MS) * 100));
-                            mostrarLetraAtual(letra, true);
-                            if (decorrido >= TEMPO_CONFIRMACAO_MS) confirmarLetra(letra);
-                        } else {
-                            candidatoLetra = letra;
-                            inicioCandidato = Date.now();
-                            atualizarBarra(0);
-                            mostrarLetraAtual(letra, false);
-                        }
-                    } else {
-                        resetTudoSemMao();
-                    }
-                    ctx.restore();
-                } catch (err) {
-                    console.error("Erro no processamento do quadro:", err);
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        ...opcoesBase,
+                        baseOptions: { modelAssetPath: MODELO_URL, delegate: "GPU" },
+                    });
+                } catch (errGpu) {
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        ...opcoesBase,
+                        baseOptions: { modelAssetPath: MODELO_URL, delegate: "CPU" },
+                    });
                 }
-            });
-
-            try {
-                camera = new Camera(video, {
-                    onFrame: async () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; await hands.send({image: video}); },
-                    width: 640, height: 480
-                });
             } catch (err) {
-                return falhar("Erro ao inicializar a câmera: " + err.message);
+                btnCam.disabled = false;
+                return falhar("Não foi possível carregar o modelo de reconhecimento de mãos. Verifique sua conexão com a internet.");
             }
 
-            camera.start().then(() => {
-                cameraOn = true; btnCam.style.display = "none"; liveTag.classList.add('show');
-                setTimeout(() => {
-                    if (cameraOn && semMaoDesde !== null && candidatoLetra === null && ultimaLetraConfirmada === null) {
-                        document.getElementById('palavra-formada').innerHTML = "Nenhuma mão detectada ainda. Aproxime bem a mão da câmera, em um ambiente iluminado e com fundo neutro.";
-                    }
-                }, 7000);
-            }).catch(e => {
-                const nome = e && e.name;
+            // 3) Liga a câmera do dispositivo
+            btnCam.innerText = "Abrindo Câmera...";
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+            } catch (err) {
+                btnCam.disabled = false;
                 const mensagens = {
                     'NotAllowedError': "Permissão de câmera negada. Toque no cadeado/ícone ao lado do endereço do site e libere a câmera.",
                     'NotFoundError': "Nenhuma câmera foi encontrada neste dispositivo.",
                     'NotReadableError': "A câmera está sendo usada por outro aplicativo. Feche-o e tente novamente.",
                     'OverconstrainedError': "A câmera do dispositivo não atende aos requisitos solicitados.",
                 };
-                falhar(mensagens[nome] || ("Erro ao acessar a câmera: " + (e && e.message ? e.message : e)));
-                btnCam.style.display = "block";
-            });
+                return falhar(mensagens[err.name] || ("Erro ao acessar a câmera: " + err.message));
+            }
+
+            video.srcObject = stream;
+            await video.play();
+
+            cameraOn = true;
+            loopAtivo = true;
+            btnCam.disabled = false;
+            btnCam.style.display = "none";
+            liveTag.classList.add('show');
+
+            setTimeout(() => {
+                if (cameraOn && semMaoDesde !== null && candidatoLetra === null && ultimaLetraConfirmada === null) {
+                    document.getElementById('palavra-formada').innerHTML = "Nenhuma mão detectada ainda. Aproxime bem a mão da câmera, em um ambiente iluminado e com fundo neutro.";
+                }
+            }, 7000);
+
+            function processarQuadro() {
+                if (!loopAtivo) return;
+                if (video.videoWidth > 0) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    try {
+                        const results = handLandmarker.detectForVideo(video, performance.now());
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        if (results.landmarks && results.landmarks.length > 0) {
+                            const marks = results.landmarks[0];
+                            desenharMao(ctx, marks, canvas.width, canvas.height);
+
+                            semMaoDesde = null;
+                            espacoAutoAdicionado = false;
+
+                            const letra = classificarLetra(marks);
+
+                            if (letra === ultimaLetraConfirmada) {
+                                candidatoLetra = null;
+                                atualizarBarra(0);
+                                mostrarLetraAtual(letra, false);
+                            } else if (letra === "...") {
+                                candidatoLetra = null;
+                                atualizarBarra(0);
+                                mostrarLetraAtual("...", false);
+                            } else if (letra === candidatoLetra) {
+                                const decorrido = Date.now() - inicioCandidato;
+                                atualizarBarra(Math.min(100, (decorrido / TEMPO_CONFIRMACAO_MS) * 100));
+                                mostrarLetraAtual(letra, true);
+                                if (decorrido >= TEMPO_CONFIRMACAO_MS) confirmarLetra(letra);
+                            } else {
+                                candidatoLetra = letra;
+                                inicioCandidato = Date.now();
+                                atualizarBarra(0);
+                                mostrarLetraAtual(letra, false);
+                            }
+                        } else {
+                            resetTudoSemMao();
+                        }
+                    } catch (err) {
+                        console.error("Erro no processamento do quadro:", err);
+                    }
+                }
+                requestAnimationFrame(processarQuadro);
+            }
+            requestAnimationFrame(processarQuadro);
         }
     </script>
 </body>
