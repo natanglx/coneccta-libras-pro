@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ConectaLibras</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- MediaPipe Tasks Vision (biblioteca atual do Google) é carregada dinamicamente dentro de ligarCameraIA() -->
+
+    <style>
+        /* === VARIÁVEIS E TEMAS === */
+        :root {
+            --bg-body: #0a0a0a;
+            --bg-card: #171717;
+            --bg-input: #262626;
+            --text-main: #ffffff;
+            --text-sub: #a3a3a3;
+            --border-color: #3f3f46;
+            --primary: #eab308; /* Amarelo */
+            --primary-hover: #facc15;
+            --accent-1: #7c3aed; 
+            --accent-2: #3b82f6; /* Azul para o segundo nome */
+            --error-color: #ef4444;
+            --success-color: #22c55e;
+            --header-bg: rgba(10, 10, 10, 0.85);
+        }
+
+        body.light-mode {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-input: #e2e8f0;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --border-color: #cbd5e1;
+            --header-bg: rgba(248, 250, 252, 0.85);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body { background: var(--bg-body); color: var(--text-main); overflow-x: hidden; scroll-behavior: smooth; }
+
+        /* === BOTÕES GERAIS E EFEITO HOVER DOS CARDS === */
+        .btn-primary { background: var(--primary); color: #000; font-weight: 700; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; width: 100%; transition: all 0.3s ease; margin-top: 10px; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 8px 20px rgba(234,179,8,0.25); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+
+        button:focus-visible, input:focus-visible, .nav-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+        }
+        
+        .hover-expand { transition: box-shadow 0.3s ease, border-color 0.3s ease; z-index: 1; }
+        /* Sombra e borda amarela ao passar o mouse/tocar, sem aumentar o tamanho do quadrado */
+        .hover-expand:hover { 
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35); 
+            border-color: var(--primary) !important; 
+        }
+
+        /* === CABEÇALHO === */
+        header { position: fixed; top: 0; width: 100%; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; z-index: 1000; background: var(--header-bg); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 20px rgba(0,0,0,0.15); }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+
+        .menu-btn { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 5px; }
+        .menu-btn .bar { width: 25px; height: 3px; background: var(--text-main); border-radius: 2px; }
+
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-50px); } to { opacity: 1; transform: translateX(0); } }
+        .logo { font-size: 1.5rem; font-weight: 800; animation: slideInLeft 1s ease forwards; }
+        .theme-toggle { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; }
+
+        /* === SIDEBAR (MENU LATERAL) === */
+        .overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 1500; display: none; opacity: 0; transition: opacity 0.3s; }
+        .overlay.active { display: block; opacity: 1; }
+        .sidebar { position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; background: var(--bg-body); border-right: 1px solid var(--border-color); z-index: 2000; transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); padding: 80px 20px 20px; }
+        .sidebar.open { left: 0; }
+        .sidebar-close { position: absolute; top: 20px; right: 20px; font-size: 2rem; background: none; border: none; color: var(--text-main); cursor: pointer; }
+        .sidebar-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 30px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; }
+        .nav-link { display: block; width: 100%; text-align: left; background: none; border: none; padding: 15px; font-size: 1.1rem; color: var(--text-main); border-radius: 8px; cursor: pointer; margin-bottom: 10px; font-weight: 600; transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { background: var(--bg-card); color: var(--primary); border: 1px solid var(--border-color); }
+        .btn-sair { color: var(--error-color) !important; margin-top: 50px; }
+
+        /* === ANIMAÇÕES DE SCROLL === */
+        .scroll-hidden { opacity: 0; transform: translateY(40px); transition: all 0.6s ease-out; }
+        .scroll-show { opacity: 1; transform: translateY(0); }
+
+        /* === TELA HERO & LOGIN === */
+        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 5%; text-align: center; }
+        .hero-content { max-width: 600px; margin-bottom: 40px; }
+        .hero-title { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; margin-bottom: 15px; }
+        .hero-subtitle { font-size: 1.1rem; color: var(--text-sub); }
+
+        .login-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; text-align: left; }
+        .auth-form { display: none; animation: fadeUp 0.4s ease forwards; }
+        .auth-form.active { display: block; }
+        .auth-form h2 { margin-bottom: 25px; color: var(--text-main); }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.85rem; color: var(--text-sub); margin-bottom: 5px; font-weight: 600; }
+        .input-group input { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); outline: none; }
+        .input-group input:focus { border-color: var(--primary); }
+
+        .regras-senha { background: var(--bg-input); padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 0.8rem; border: 1px solid var(--border-color); }
+        .regras-senha p { color: var(--text-main); font-weight: 600; margin-bottom: 5px; }
+        .regras-senha ul { list-style: none; margin-left: 0; }
+        .regras-senha li { color: var(--text-sub); margin-bottom: 3px; }
+
+        .msg-box { font-size: 0.85rem; margin-bottom: 15px; display: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: 600; }
+        .msg-error { background: rgba(239, 68, 68, 0.1); color: var(--error-color); border: 1px solid var(--error-color); }
+        .msg-success { background: rgba(34, 197, 94, 0.1); color: var(--success-color); border: 1px solid var(--success-color); }
+        .toggle-links span { color: var(--primary); font-size: 0.85rem; cursor: pointer; display: block; margin-top: 20px; text-align: center; font-weight: 600; }
+
+        /* === SEÇÃO INFORMAÇÕES ("O QUE FAZEMOS") === */
+        .info-section { padding: 100px 5%; max-width: 1200px; margin: 0 auto; }
+        .info-header { text-align: center; margin-bottom: 60px; }
+        .info-header h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 15px; }
+        .info-header p { color: var(--text-sub); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .feature-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); }
+        .feature-card h3 { font-size: 1.3rem; margin-bottom: 15px; color: var(--text-main); }
+        .feature-number { font-size: 3rem; font-weight: 800; color: var(--bg-input); -webkit-text-stroke: 1px var(--border-color); margin-bottom: 10px; display: inline-block; }
+
+        /* === DASHBOARD APP === */
+        #app-dashboard { display: none; padding-top: 100px; min-height: 100vh; padding-bottom: 50px; }
+        .dashboard-content { max-width: 800px; margin: 0 auto; width: 100%; padding: 0 20px; }
+        .tab-content { display: none; animation: fadeUp 0.4s ease forwards; }
+        .tab-content.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* TELA INÍCIO / TUTORIAL (Centralizada) */
+        #tab-home {
+            display: flex !important; /* Força o flexbox quando ativo */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+            text-align: center;
+        }
+        /* Esconde quando não for a aba ativa */
+        .tab-content:not(.active)#tab-home {
+            display: none !important;
+        }
+
+        @keyframes slideLeftCenter { 0% { transform: translateY(-30px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .welcome-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; margin-bottom: 20px; animation: slideLeftCenter 0.8s ease forwards; color: var(--text-main); }
+        
+        .tutorial-toggle-wrap { text-align: center; margin: 0 auto 20px auto; }
+        .tutorial-label { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+        .btn-tutorial-link { background: none; border: none; color: var(--accent-2); font-size: 1rem; font-weight: 700; cursor: pointer; padding: 4px 8px; text-decoration: underline; }
+        .btn-tutorial-link:hover { color: var(--primary); }
+
+        .tutorial-content { width: 100%; max-height: 0; overflow: hidden; transition: max-height 0.8s cubic-bezier(0, 1, 0, 1); }
+        .tutorial-content.open { max-height: 1500px; }
+        .tutorial-inner { background: transparent; padding: 10px 0; margin-top: 10px; }
+
+        /* Grid dos Quadradinhos do Tutorial - versão compacta */
+        .tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .tutorial-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; position: relative; overflow: hidden; text-align: left; display: flex; flex-direction: column; justify-content: flex-start; min-height: 110px; gap: 3px; }
+        .tutorial-card .t-badge { font-size: 0.65rem; font-weight: 800; color: var(--text-sub); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+        .tutorial-card h4 { color: var(--primary); font-size: 0.98rem; margin-bottom: 2px; z-index: 2; }
+        .tutorial-card p { color: var(--text-sub); font-size: 0.78rem; line-height: 1.4; z-index: 2; margin: 0; }
+
+        /* Modulos / UI Específica */
+        .section-title { font-size: 1.8rem; margin-bottom: 20px; color: var(--text-main); }
+        .desc-text { color: var(--text-sub); margin-bottom: 15px; font-size: 1rem; }
+        .output-box { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-top: 20px; min-height: 80px; font-size: 1.1rem; }
+        .text-center { text-align: center; }
+
+        /* Perfil */
+        .profile-header { display: flex; justify-content: center; margin-bottom: 30px; }
+        .profile-img-box { width: 120px; height: 120px; border-radius: 50%; background: var(--bg-input); display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px dashed var(--border-color); cursor: pointer; }
+        .profile-img-box img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        #img-placeholder { color: var(--text-sub); font-size: 0.85rem; text-align: center; font-weight: 600; }
+
+        /* Câmera IA */
+        .video-box { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; margin-top: 20px; border: 1px solid var(--border-color); }
+        .video-box video, .video-box canvas { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+        .live-tag { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.55); color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; z-index: 5; opacity: 0; transition: opacity 0.3s; }
+        .live-tag.show { opacity: 1; }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error-color); animation: pulseDot 1.4s ease-in-out infinite; }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+
+        .letra-destaque { font-size: 4rem; font-weight: 800; color: var(--primary); margin-top: 10px; transition: color 0.15s, transform 0.15s; }
+        .letra-destaque.confirmando { color: var(--accent-2); }
+        .letra-destaque.confirmado { color: var(--success-color); transform: scale(1.15); }
+
+        .barra-confirmacao { width: 100%; height: 6px; background: var(--bg-card); border-radius: 4px; margin-top: 15px; overflow: hidden; }
+        .barra-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-2), var(--primary)); border-radius: 4px; transition: width 0.05s linear; }
+
+        .palavra-texto { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; min-height: 30px; font-size: 1.4rem; font-weight: 700; letter-spacing: 1px; word-break: break-word; color: var(--text-main); }
+        .palavra-acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .btn-mini { flex: 1; min-width: 75px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
+        .btn-mini-primary { background: var(--primary); color: #000; border-color: var(--primary); font-weight: 800; }
+
+        /* Dicionário */
+        .dic-tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .dic-tab-btn { flex: 1; padding: 12px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .dic-tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+        .dic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; display: none; }
+        .dic-grid.active { display: grid; }
+        .dic-item { background: var(--bg-input); border: 1px solid var(--border-color); padding: 20px; text-align: center; border-radius: 8px; }
+        .dic-visual img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 6px; display: block; }
+        .dic-visual { font-weight: 800; color: var(--text-sub); margin-bottom: 10px; font-size: 0.9rem; letter-spacing: 1px; }
+        .dic-text { color: var(--text-main); font-weight: 600; }
+
+        /* Histórico */
+        .hist-item { background: var(--bg-input); padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--primary); font-size: 1.1rem; }
+        .hist-data { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 8px; font-weight: 600; }
+
+        /* VLibras */
+        .vw-plugin-wrapper { display: none !important; }
+        body.show-vlibras .vw-plugin-wrapper { display: block !important; }
+    </style>
+</head>
+<body>
+
+    <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper><div class="vw-plugin-top-wrapper"></div></div>
+    </div>
+
+    <header>
+        <div class="header-left">
+            <button class="menu-btn" id="btn-menu" onclick="toggleSidebar()">
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            </button>
+            <div class="logo">ConectaLibras</div>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" id="btn-theme">Tema Claro</button>
+    </header>
+
+    <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar" id="sidebar">
+        <button class="sidebar-close" onclick="toggleSidebar()">×</button>
+        <div class="sidebar-title">Menu</div>
+        <button class="nav-link active" onclick="abrirAba('tab-home')">Início</button>
+        <button class="nav-link" onclick="abrirAba('tab-perfil')">Perfil</button>
+        <button class="nav-link" onclick="abrirAba('tab-voz')">Tradução por Voz</button>
+        <button class="nav-link" onclick="abrirAba('tab-cam')">Câmera IA</button>
+        <button class="nav-link" onclick="abrirAba('tab-dic')">Dicionário</button>
+        <button class="nav-link" onclick="abrirAba('tab-hist')">Histórico</button>
+        <button class="nav-link btn-sair" onclick="sair()">Sair da Conta</button>
+    </div>
+
+    <div id="landing-page">
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title scroll-hidden">Supere qualquer barreira.<br>Vá além da comunicação.</h1>
+                <p class="hero-subtitle scroll-hidden" style="transition-delay: 0.1s;">Acessibilidade universal em tempo real. Tradução automática e transcrição inteligente em uma única plataforma profissional.</p>
+            </div>
+
+            <div class="login-box scroll-hidden" style="transition-delay: 0.2s;">
+                
+                <div id="form-login" class="auth-form active">
+                    <h2>Acessar Plataforma</h2>
+                    <div class="input-group">
+                        <label>E-mail ou Usuário</label>
+                        <input type="text" id="log-user" placeholder="Seu acesso">
+                    </div>
+                    <div class="input-group">
+                        <label>Senha</label>
+                        <input type="password" id="log-pass" placeholder="Sua senha">
+                    </div>
+                    <div id="log-msg" class="msg-box msg-error"></div>
+                    <button class="btn-primary" onclick="fazerLogin()">Entrar</button>
+                    <div class="toggle-links"><span onclick="alternarAuth('register')">Criar nova conta</span></div>
+                </div>
+
+                <div id="form-register" class="auth-form">
+                    <h2>Nova Conta</h2>
+                    <div class="input-group">
+                        <label>Nome / Usuário</label>
+                        <input type="text" id="reg-user" placeholder="Ex: João Pedro">
+                    </div>
+                    <div class="input-group">
+                        <label>E-mail</label>
+                        <input type="email" id="reg-email" placeholder="joao@email.com">
+                    </div>
+                    <div class="input-group">
+                        <label>Senha</label>
+                        <input type="password" id="reg-pass" placeholder="Crie uma senha forte" onkeyup="validarSenhaUI()">
+                    </div>
+                    
+                    <div class="regras-senha">
+                        <p>Regras de senha:</p>
+                        <ul>
+                            <li id="rule-len">Entre 8 e 20 caracteres</li>
+                            <li id="rule-up">Mínimo 1 letra maiúscula</li>
+                            <li id="rule-num">Mínimo 1 número</li>
+                            <li id="rule-sym">Mínimo 1 símbolo (@$!%*?&)</li>
+                        </ul>
+                    </div>
+
+                    <div id="reg-msg" class="msg-box msg-error"></div>
+                    <button class="btn-primary" onclick="criarConta()">Cadastrar</button>
+                    <div class="toggle-links"><span onclick="alternarAuth('login')">Já tem conta? Entrar</span></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-section">
+            <div class="info-header scroll-hidden">
+                <h2 style="font-size: 0.8rem; color: var(--primary); text-transform: uppercase; letter-spacing: 2px;">O que fazemos</h2>
+                <h2 style="margin-top: 10px;">Para cada barreira, uma solução.</h2>
+                <p>O ConectaLibras unifica ferramentas avançadas de IA para garantir que ninguém fique de fora da conversa.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card hover-expand scroll-hidden">
+                    <span class="feature-number">01</span>
+                    <h3>Transcrição em Tempo Real</h3>
+                    <p>Transforme qualquer fala em texto instantaneamente. Ideal para ambientes acadêmicos, corporativos ou situações de baixa audição.</p>
+                </div>
+                <div class="feature-card hover-expand scroll-hidden" style="transition-delay: 0.1s;">
+                    <span class="feature-number">02</span>
+                    <h3>Tradução Inteligente (IA)</h3>
+                    <p>Reconhecimento avançado de gestos manuais usando visão computacional. Converta o alfabeto manual de Libras para texto na tela.</p>
+                </div>
+                <div class="feature-card hover-expand scroll-hidden" style="transition-delay: 0.2s;">
+                    <span class="feature-number">03</span>
+                    <h3>Avatar Bidirecional</h3>
+                    <p>Integração nativa que compreende o contexto da linguagem natural e aplica a tradução correta para a Língua Brasileira de Sinais.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="app-dashboard">
+        <div class="dashboard-content">
+
+            <div id="tab-home" class="tab-content active">
+                <h1 class="welcome-title">Bem-vindo(a), <span id="user-display-name">Usuário</span>!</h1>
+                
+                <div class="tutorial-toggle-wrap">
+                    <p class="tutorial-label">Como utilizar o site?</p>
+                    <button class="btn-tutorial-link" onclick="toggleTutorial()">Aperte aqui</button>
+                </div>
+                
+                <div class="tutorial-content" id="tutorial-box">
+                    <div class="tutorial-inner">
+                        <div class="tutorial-grid">
+                            <div class="tutorial-card hover-expand">
+                                <span class="t-badge">1</span>
+                                <h4>Perfil</h4>
+                                <p>Adicione uma foto e edite seu nome de exibição.</p>
+                            </div>
+                            
+                            <div class="tutorial-card hover-expand">
+                                <span class="t-badge">2</span>
+                                <h4>Tradução por Voz</h4>
+                                <p>Fale e veja o texto e o avatar em Libras juntos.</p>
+                            </div>
+                            
+                            <div class="tutorial-card hover-expand">
+                                <span class="t-badge">3</span>
+                                <h4>Câmera IA</h4>
+                                <p>Faça letras em Libras e monte palavras com a mão.</p>
+                            </div>
+                            
+                            <div class="tutorial-card hover-expand">
+                                <span class="t-badge">4</span>
+                                <h4>Dicionário</h4>
+                                <p>Consulte o alfabeto e sinais do dia a dia.</p>
+                            </div>
+                            
+                            <div class="tutorial-card hover-expand">
+                                <span class="t-badge">5</span>
+                                <h4>Histórico</h4>
+                                <p>Reveja todas as traduções que você já fez.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-perfil" class="tab-content">
+                <h2 class="section-title">Meu Perfil</h2>
+                <div class="feature-card">
+                    <div class="profile-header">
+                        <label class="profile-img-box hover-expand" for="input-foto">
+                            <span id="img-placeholder">Adicionar<br>Foto</span>
+                            <img id="img-preview" src="">
+                        </label>
+                        <input type="file" id="input-foto" accept="image/*" style="display: none;" onchange="carregarFoto(event)">
+                    </div>
+                    <div class="input-group">
+                        <label>Alterar Nome de Exibição</label>
+                        <input type="text" id="edit-nome" placeholder="Seu nome">
+                    </div>
+                    <div id="prof-msg" class="msg-box msg-success"></div>
+                    <button class="btn-primary" onclick="salvarPerfil()">Salvar Perfil</button>
+                </div>
+            </div>
+
+            <div id="tab-voz" class="tab-content">
+                <h2 class="section-title">Tradução por Voz</h2>
+                <div class="feature-card">
+                    <p class="desc-text">Fale para o sistema transcrever e o avatar traduzir.</p>
+                    <button class="btn-primary hover-expand" id="btn-mic" onclick="iniciarVoz()">Iniciar Microfone</button>
+                    <div class="output-box" id="texto-voz">Aguardando áudio...</div>
+                </div>
+            </div>
+
+            <div id="tab-cam" class="tab-content">
+                <h2 class="section-title">Câmera IA</h2>
+                <div class="feature-card">
+                    <p class="desc-text">Mostre uma letra do alfabeto de Libras para a câmera e segure firme por um instante para confirmar. As letras confirmadas vão se juntando no quadro abaixo até formar a palavra.</p>
+                    <button class="btn-primary hover-expand" id="btn-cam" onclick="ligarCameraIA()">Ligar Câmera</button>
+                    <div class="video-box">
+                        <video id="video-ia" playsinline autoplay muted></video>
+                        <canvas id="canvas-ia"></canvas>
+                        <div class="live-tag" id="live-tag"><span class="live-dot"></span>AO VIVO</div>
+                    </div>
+                    <div class="output-box text-center">
+                        <p class="desc-text">Letra identificada:</p>
+                        <div id="letra-ia" class="letra-destaque">-</div>
+                        <div class="barra-confirmacao"><div id="barra-fill" class="barra-fill"></div></div>
+                    </div>
+                    <div class="output-box">
+                        <p class="desc-text">Palavra formada:</p>
+                        <div id="palavra-formada" class="palavra-texto">&nbsp;</div>
+                        <div class="palavra-acoes">
+                            <button class="btn-mini hover-expand" onclick="adicionarEspaco()">␣ Espaço</button>
+                            <button class="btn-mini hover-expand" onclick="apagarLetra()">⌫ Apagar</button>
+                            <button class="btn-mini hover-expand" onclick="limparPalavra()">✕ Limpar</button>
+                            <button class="btn-mini btn-mini-primary hover-expand" onclick="salvarPalavraHistorico(this)">✓ Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-dic" class="tab-content">
+                <h2 class="section-title">Dicionário de Sinais</h2>
+                <div class="feature-card">
+                    <div class="dic-tabs">
+                        <button class="dic-tab-btn active" onclick="trocarDicionario('letras', this)">Letras</button>
+                        <button class="dic-tab-btn" onclick="trocarDicionario('palavras', this)">Palavras</button>
+                    </div>
+                    
+                    <div id="dic-letras" class="dic-grid active">
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/7NYktq0V/IMG-20260813-WA0075.jpg" alt="Sinal da letra A em Libras"></div><div class="dic-text">A</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/Vcr5St2q/IMG-20260813-WA0076.jpg" alt="Sinal da letra B em Libras"></div><div class="dic-text">B</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/99pdmc1p/IMG-20260813-WA0077.jpg" alt="Sinal da letra C em Libras"></div><div class="dic-text">C</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/WvsyNTt7/IMG-20260813-WA0078.jpg" alt="Sinal da letra D em Libras"></div><div class="dic-text">D</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/svkgnM8H/IMG-20260813-WA0079.jpg" alt="Sinal da letra E em Libras"></div><div class="dic-text">E</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/3yqZKbqX/IMG-20260813-WA0080.jpg" alt="Sinal da letra F em Libras"></div><div class="dic-text">F</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/mFP7DQmD/IMG-20260813-WA0081.jpg" alt="Sinal da letra G em Libras"></div><div class="dic-text">G</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/bjX0nzk8/IMG-20260813-WA0082.jpg" alt="Sinal da letra H em Libras"></div><div class="dic-text">H</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/0Vn8hDtg/IMG-20260813-WA0083.jpg" alt="Sinal da letra I em Libras"></div><div class="dic-text">I</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/2YfgvgCs/IMG-20260813-WA0084.jpg" alt="Sinal da letra J em Libras"></div><div class="dic-text">J</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/qLZBCzQq/IMG-20260813-WA0085.jpg" alt="Sinal da letra K em Libras"></div><div class="dic-text">K</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/ZRYdxk6R/IMG-20260813-WA0086.jpg" alt="Sinal da letra L em Libras"></div><div class="dic-text">L</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/VW2sFpRf/IMG-20260813-WA0087.jpg" alt="Sinal da letra M em Libras"></div><div class="dic-text">M</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/9J4yzxv/IMG-20260813-WA0088.jpg" alt="Sinal da letra N em Libras"></div><div class="dic-text">N</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/r2SKbwn3/IMG-20260813-WA0089.jpg" alt="Sinal da letra O em Libras"></div><div class="dic-text">O</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/Y4Gr1SsD/IMG-20260813-WA0090.jpg" alt="Sinal da letra P em Libras"></div><div class="dic-text">P</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/twdjV4sJ/IMG-20260813-WA0091.jpg" alt="Sinal da letra Q em Libras"></div><div class="dic-text">Q</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/zqbVH6q/IMG-20260813-WA0092.jpg" alt="Sinal da letra R em Libras"></div><div class="dic-text">R</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/ZphmRhyx/IMG-20260813-WA0093.jpg" alt="Sinal da letra S em Libras"></div><div class="dic-text">S</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/FkDHbym2/IMG-20260813-WA0094.jpg" alt="Sinal da letra T em Libras"></div><div class="dic-text">T</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/s99pVTt7/IMG-20260813-WA0095.jpg" alt="Sinal da letra U em Libras"></div><div class="dic-text">U</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/p69V2FCz/IMG-20260813-WA0096.jpg" alt="Sinal da letra V em Libras"></div><div class="dic-text">V</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/5g786tnP/IMG-20260813-WA0097.jpg" alt="Sinal da letra W em Libras"></div><div class="dic-text">W</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/r2Sh0hfd/IMG-20260813-WA0098.jpg" alt="Sinal da letra X em Libras"></div><div class="dic-text">X</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/k60bGYHY/IMG-20260813-WA0099.jpg" alt="Sinal da letra Y em Libras"></div><div class="dic-text">Y</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual"><img src="https://i.ibb.co/tpT7pp3b/IMG-20260813-WA0100.jpg" alt="Sinal da letra Z em Libras"></div><div class="dic-text">Z</div></div>
+                    </div>
+
+                    <div id="dic-palavras" class="dic-grid">
+                        <div class="dic-item hover-expand"><div class="dic-visual">[ SINAL OBRIGADO ]</div><div class="dic-text">Obrigado</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual">[ SINAL DESCULPA ]</div><div class="dic-text">Desculpa</div></div>
+                        <div class="dic-item hover-expand"><div class="dic-visual">[ SINAL BOM DIA ]</div><div class="dic-text">Bom dia</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-hist" class="tab-content">
+                <h2 class="section-title">Histórico de Traduções</h2>
+                <div class="feature-card" id="lista-historico">
+                    <p class="desc-text">Nenhum registro encontrado.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <script>
+        // === INICIALIZAÇÃO ===
+        new window.VLibras.Widget('https://vlibras.gov.br/app');
+        let usuarioLogado = null;
+        let bancoUsuarios = JSON.parse(localStorage.getItem('bdConectaPro')) || [];
+
+        // === TEMA CLARO/ESCURO ===
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            document.getElementById('btn-theme').innerText = document.body.classList.contains('light-mode') ? 'Tema Escuro' : 'Tema Claro';
+        }
+
+        // === LÓGICA DE CORES DO NOME (AMARELO E AZUL) ===
+        function formatarNomeCores(nomeOriginal) {
+            // Divide o nome pelos espaços
+            let partes = nomeOriginal.trim().split(' ');
+            
+            if (partes.length > 1) {
+                // Se tem mais de um nome, o primeiro é amarelo (primary) e o resto é azul (accent-2)
+                let primeiro = partes[0];
+                let resto = partes.slice(1).join(' ');
+                return `<span style="color: var(--primary);">${primeiro}</span> <span style="color: var(--accent-2);">${resto}</span>`;
+            } else {
+                // Se for um nome só, fica todo amarelo
+                return `<span style="color: var(--primary);">${nomeOriginal}</span>`;
+            }
+        }
+
+        // === ANIMAÇÃO DE SCROLL ===
+        const observerOptions = { root: null, rootMargin: '0px', threshold: 0.15 };
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('scroll-show'); 
+                } else {
+                    entry.target.classList.remove('scroll-show'); 
+                }
+            });
+        }, observerOptions);
+        document.querySelectorAll('.scroll-hidden').forEach(el => observer.observe(el));
+
+        // === NAVEGAÇÃO E SIDEBAR ===
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        function toggleTutorial() {
+            document.getElementById('tutorial-box').classList.toggle('open');
+        }
+
+        function abrirAba(idAba) {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('overlay').classList.remove('active');
+
+            document.querySelectorAll('.tab-content').forEach(a => a.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            
+            document.getElementById(idAba).classList.add('active');
+            event.currentTarget.classList.add('active');
+
+            // Mostra o VLibras apenas na aba de voz
+            if(idAba === 'tab-voz') document.body.classList.add('show-vlibras');
+            else document.body.classList.remove('show-vlibras');
+
+            if(idAba === 'tab-hist') renderizarHistorico();
+        }
+
+        // === SISTEMA DE LOGIN E VALIDAÇÃO DE SENHA ===
+        function alternarAuth(tela) {
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            document.getElementById('form-' + tela).classList.add('active');
+            document.querySelectorAll('.msg-box').forEach(m => m.style.display = 'none');
+        }
+
+        function mostrarMsg(id, texto, tipo) {
+            const box = document.getElementById(id);
+            box.innerText = texto;
+            box.className = `msg-box msg-${tipo}`;
+            box.style.display = 'block';
+        }
+
+        function validarSenhaUI() {
+            const s = document.getElementById('reg-pass').value;
+            document.getElementById('rule-len').style.color = (s.length >= 8 && s.length <= 20) ? "var(--success-color)" : "var(--text-sub)";
+            document.getElementById('rule-up').style.color = /[A-Z]/.test(s) ? "var(--success-color)" : "var(--text-sub)";
+            document.getElementById('rule-num').style.color = /\d/.test(s) ? "var(--success-color)" : "var(--text-sub)";
+            document.getElementById('rule-sym').style.color = /[@$!%*?&]/.test(s) ? "var(--success-color)" : "var(--text-sub)";
+        }
+
+        function criarConta() {
+            const user = document.getElementById('reg-user').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+
+            if(!user || !email || !pass) return mostrarMsg('reg-msg', 'Preencha todos os campos.', 'error');
+            
+            if(pass.length < 8) return mostrarMsg('reg-msg', 'Não atingiu o mínimo de caracteres.', 'error');
+            if(pass.length > 20) return mostrarMsg('reg-msg', 'Atingiu o máximo de caracteres.', 'error');
+            
+            const regexCompleta = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
+            if(!regexCompleta.test(pass)) return mostrarMsg('reg-msg', 'Senha muito fraca. Siga as regras abaixo.', 'error');
+
+            if(bancoUsuarios.find(u => u.email === email || u.user === user)) 
+                return mostrarMsg('reg-msg', 'Usuário ou e-mail já cadastrado.', 'error');
+
+            const novaConta = { user, email, pass, foto: "", historico: [] };
+            bancoUsuarios.push(novaConta);
+            localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
+            logar(novaConta);
+        }
+
+        function fazerLogin() {
+            const userEmail = document.getElementById('log-user').value.trim();
+            const pass = document.getElementById('log-pass').value;
+
+            const conta = bancoUsuarios.find(u => (u.user === userEmail || u.email === userEmail) && u.pass === pass);
+            
+            if(conta) logar(conta);
+            else mostrarMsg('log-msg', 'Usuário não cadastrado ou senha inválida', 'error'); 
+        }
+
+        function logar(conta) {
+            usuarioLogado = conta;
+            document.getElementById('landing-page').style.display = 'none';
+            document.getElementById('app-dashboard').style.display = 'block';
+            
+            document.getElementById('btn-menu').style.display = 'flex';
+            
+            // Aplica a lógica do nome amarelo e azul
+            document.getElementById('user-display-name').innerHTML = formatarNomeCores(conta.user);
+            document.getElementById('edit-nome').value = conta.user;
+            
+            if(conta.foto) {
+                document.getElementById('img-preview').src = conta.foto;
+                document.getElementById('img-preview').style.display = 'block';
+                document.getElementById('img-placeholder').style.display = 'none';
+            }
+        }
+
+        function sair() {
+            usuarioLogado = null;
+            document.body.classList.remove('show-vlibras');
+            document.getElementById('app-dashboard').style.display = 'none';
+            document.getElementById('btn-menu').style.display = 'none';
+            document.getElementById('landing-page').style.display = 'block';
+            if(document.getElementById('sidebar').classList.contains('open')) toggleSidebar();
+            document.querySelectorAll('input').forEach(i => i.value = '');
+        }
+
+        // === PERFIL ===
+        function carregarFoto(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    document.getElementById('img-preview').src = dataUrl;
+                    document.getElementById('img-preview').style.display = 'block';
+                    document.getElementById('img-placeholder').style.display = 'none';
+                    usuarioLogado.foto = dataUrl;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function salvarPerfil() {
+            const novoNome = document.getElementById('edit-nome').value.trim();
+            if(novoNome) {
+                usuarioLogado.user = novoNome;
+                // Atualiza o nome novamente usando a função de cores
+                document.getElementById('user-display-name').innerHTML = formatarNomeCores(novoNome);
+            }
+            localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
+            mostrarMsg('prof-msg', 'Perfil salvo!', 'success');
+            setTimeout(() => document.getElementById('prof-msg').style.display = 'none', 3000);
+        }
+
+        // === TRADUÇÃO POR VOZ E HISTÓRICO ===
+        function iniciarVoz() {
+            const out = document.getElementById('texto-voz');
+            const btn = document.getElementById('btn-mic');
+
+            function resetBotao() {
+                btn.innerText = "Iniciar Microfone";
+                btn.style.background = "var(--primary)";
+            }
+
+            // Câmera e microfone só funcionam em contexto seguro (https:// ou localhost).
+            // Abrir o arquivo direto (file://) ou por link content:// do Android bloqueia o microfone.
+            if (!window.isSecureContext) {
+                out.innerText = "O microfone só funciona em um site publicado com HTTPS (ex.: GitHub Pages, Netlify) ou em localhost. Abrir o arquivo direto do celular/computador não funciona.";
+                return;
+            }
+
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { out.innerText = "Este navegador não tem suporte a reconhecimento de voz. Tente no Google Chrome."; return; }
+
+            if (!navigator.onLine) {
+                out.innerText = "O reconhecimento de voz precisa de internet ativa para funcionar. Verifique sua conexão.";
+                return;
+            }
+
+            let concluido = false;
+            const rec = new SR();
+            rec.lang = 'pt-BR';
+            rec.continuous = false;
+            rec.interimResults = false;
+
+            rec.onstart = () => { btn.innerText = "Gravando Áudio..."; btn.style.background = "var(--error-color)"; out.innerText = "Ouvindo... fale agora."; };
+
+            rec.onresult = (e) => {
+                concluido = true;
+                const texto = e.results[0][0].transcript;
+                out.innerText = texto;
+                resetBotao();
+
+                usuarioLogado.historico.push({ texto: texto, data: new Date().toLocaleString() });
+                localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
+            };
+
+            rec.onerror = (e) => {
+                concluido = true;
+                const mensagens = {
+                    'not-allowed': "Permissão de microfone negada. Toque no cadeado/ícone ao lado do endereço do site e libere o microfone.",
+                    'service-not-allowed': "Permissão de microfone negada pelo navegador.",
+                    'no-speech': "Nenhuma fala foi detectada. Toque novamente e fale mais perto do microfone.",
+                    'audio-capture': "Nenhum microfone foi encontrado neste dispositivo.",
+                    'network': "Falha de rede durante o reconhecimento de voz. Verifique sua internet.",
+                    'aborted': "Gravação cancelada.",
+                };
+                out.innerText = mensagens[e.error] || `Erro ao capturar voz (${e.error}).`;
+                resetBotao();
+            };
+
+            rec.onend = () => {
+                // Garante que o botão nunca fique travado em "Gravando Áudio...",
+                // mesmo se o navegador encerrar sem disparar onresult nem onerror.
+                if (!concluido) {
+                    out.innerText = "Nenhuma fala foi reconhecida. Tente novamente.";
+                    resetBotao();
+                }
+            };
+
+            try {
+                rec.start();
+            } catch (err) {
+                out.innerText = "Não foi possível iniciar o microfone: " + err.message;
+                resetBotao();
+            }
+        }
+
+        function renderizarHistorico() {
+            const caixa = document.getElementById('lista-historico');
+            if(!usuarioLogado.historico || usuarioLogado.historico.length === 0) {
+                caixa.innerHTML = '<p class="desc-text">Nenhum registro encontrado.</p>';
+                return;
+            }
+            caixa.innerHTML = '';
+            [...usuarioLogado.historico].reverse().forEach(item => {
+                caixa.innerHTML += `<div class="hist-item"><div class="hist-data">${item.data}</div>${item.texto}</div>`;
+            });
+        }
+
+        // === DICIONÁRIO ===
+        function trocarDicionario(tipo, btn) {
+            document.querySelectorAll('.dic-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.dic-grid').forEach(g => g.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('dic-' + tipo).classList.add('active');
+        }
+
+        // === CÂMERA IA - RECONHECIMENTO DE LETRAS EM LIBRAS ===
+        let cameraOn = false;
+        let loopAtivo = false;
+        let handLandmarker = null;
+        let palavraFormada = "";
+        let candidatoLetra = null;
+        let inicioCandidato = 0;
+        let ultimaLetraConfirmada = null;
+        let semMaoDesde = null;
+        let espacoAutoAdicionado = false;
+        const TEMPO_CONFIRMACAO_MS = 650; // tempo segurando a mesma letra para ela ser confirmada
+        const TEMPO_ESPACO_AUTO_MS = 1600; // tempo sem mão na câmera para adicionar espaço automático
+
+        // Pares de pontos conectados no esqueleto da mão (21 pontos do MediaPipe)
+        const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+        function desenharMao(ctx, marks, w, h) {
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffffff';
+            HAND_CONNECTIONS.forEach(([a, b]) => {
+                ctx.beginPath();
+                ctx.moveTo(marks[a].x * w, marks[a].y * h);
+                ctx.lineTo(marks[b].x * w, marks[b].y * h);
+                ctx.stroke();
+            });
+            ctx.fillStyle = '#eab308';
+            marks.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x * w, p.y * h, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+        // Ângulo (em graus) formado no ponto "b" pelos segmentos b->a e b->c
+        function calcAngulo(a, b, c) {
+            const abx = a.x - b.x, aby = a.y - b.y;
+            const cbx = c.x - b.x, cby = c.y - b.y;
+            const dot = abx * cbx + aby * cby;
+            const magAB = Math.hypot(abx, aby) || 1e-6;
+            const magCB = Math.hypot(cbx, cby) || 1e-6;
+            const cos = Math.min(1, Math.max(-1, dot / (magAB * magCB)));
+            return Math.acos(cos) * (180 / Math.PI);
+        }
+
+        // Classifica a letra a partir dos 21 pontos da mão do MediaPipe.
+        // Heurística por geometria (ângulos das juntas + distâncias normalizadas pelo tamanho da mão).
+        // Reconhece formas estáticas: A, B, D, F, I, L, O, S, U, V, W, Y, 1 e 5.
+        // Letras que dependem de movimento (H, J, K, X, Z, entre outras) não são cobertas por este método.
+        function classificarLetra(m) {
+            const tamanhoMao = dist(m[0], m[9]) || 0.001;
+
+            const indicador = calcAngulo(m[5], m[6], m[8]) > 155;
+            const medio = calcAngulo(m[9], m[10], m[12]) > 155;
+            const anelar = calcAngulo(m[13], m[14], m[16]) > 155;
+            const minimo = calcAngulo(m[17], m[18], m[20]) > 155;
+
+            const polegarAberto = (dist(m[4], m[17]) / tamanhoMao) > 0.9;
+            const pinca = (dist(m[4], m[8]) / tamanhoMao) < 0.35;
+            const dedosJuntos = (dist(m[8], m[12]) / tamanhoMao) < 0.35;
+            const polegarTocaMedio = (dist(m[4], m[12]) / tamanhoMao) < 0.4;
+
+            if (pinca && !medio && !anelar && !minimo) return "O";
+            if (pinca && medio && anelar && minimo) return "F";
+
+            if (!indicador && !medio && !anelar && !minimo) return polegarAberto ? "A" : "S";
+            if (!indicador && !medio && !anelar && minimo) return polegarAberto ? "Y" : "I";
+            if (indicador && !medio && !anelar && !minimo) {
+                if (polegarAberto) return "L";
+                return polegarTocaMedio ? "D" : "1";
+            }
+            if (indicador && medio && !anelar && !minimo) return dedosJuntos ? "U" : "V";
+            if (indicador && medio && anelar && !minimo) return "W";
+            if (indicador && medio && anelar && minimo) return polegarAberto ? "5" : "B";
+
+            return "...";
+        }
+
+        function mostrarLetraAtual(letra, confirmando) {
+            const box = document.getElementById('letra-ia');
+            box.innerText = letra;
+            box.className = confirmando ? "letra-destaque confirmando" : "letra-destaque";
+        }
+
+        function atualizarBarra(pct) {
+            const barra = document.getElementById('barra-fill');
+            if (barra) barra.style.width = pct + "%";
+        }
+
+        function atualizarPalavra() {
+            document.getElementById('palavra-formada').innerHTML = palavraFormada.length > 0 ? palavraFormada : '&nbsp;';
+        }
+
+        function confirmarLetra(letra) {
+            palavraFormada += letra;
+            ultimaLetraConfirmada = letra;
+            candidatoLetra = null;
+            atualizarBarra(0);
+            atualizarPalavra();
+            const box = document.getElementById('letra-ia');
+            box.className = "letra-destaque confirmado";
+            setTimeout(() => { box.className = "letra-destaque"; }, 350);
+        }
+
+        function resetTudoSemMao() {
+            mostrarLetraAtual("-", false);
+            candidatoLetra = null;
+            atualizarBarra(0);
+            if (semMaoDesde === null) {
+                semMaoDesde = Date.now();
+            } else if (!espacoAutoAdicionado && Date.now() - semMaoDesde > TEMPO_ESPACO_AUTO_MS && palavraFormada.length > 0 && !palavraFormada.endsWith(" ")) {
+                palavraFormada += " ";
+                espacoAutoAdicionado = true;
+                atualizarPalavra();
+            }
+        }
+
+        function adicionarEspaco() {
+            if (palavraFormada.length > 0 && !palavraFormada.endsWith(" ")) {
+                palavraFormada += " ";
+                atualizarPalavra();
+            }
+        }
+
+        function apagarLetra() {
+            palavraFormada = palavraFormada.slice(0, -1);
+            atualizarPalavra();
+        }
+
+        function limparPalavra() {
+            palavraFormada = "";
+            atualizarPalavra();
+        }
+
+        function salvarPalavraHistorico(btn) {
+            const texto = palavraFormada.trim();
+            if (!texto || !usuarioLogado) return;
+            usuarioLogado.historico.push({ texto: `[Câmera] ${texto}`, data: new Date().toLocaleString() });
+            localStorage.setItem('bdConectaPro', JSON.stringify(bancoUsuarios));
+            const original = btn.innerText;
+            btn.innerText = "✓ Salvo!";
+            setTimeout(() => btn.innerText = original, 1500);
+        }
+
+        async function ligarCameraIA() {
+            if(cameraOn) return;
+            const video = document.getElementById('video-ia');
+            const canvas = document.getElementById('canvas-ia');
+            const ctx = canvas.getContext('2d');
+            const btnCam = document.getElementById('btn-cam');
+            const liveTag = document.getElementById('live-tag');
+            const boxLetra = document.getElementById('letra-ia');
+
+            function falhar(msg) {
+                btnCam.innerText = "Tentar Novamente";
+                btnCam.style.display = "block";
+                boxLetra.innerText = "-";
+                boxLetra.className = "letra-destaque";
+                document.getElementById('palavra-formada').innerHTML = msg;
+            }
+
+            // Câmera só funciona em contexto seguro (https:// ou localhost).
+            // Abrir o arquivo direto (file://) ou por link content:// do Android bloqueia a câmera.
+            if (!window.isSecureContext) {
+                return falhar("A câmera só funciona em um site publicado com HTTPS (ex.: GitHub Pages, Netlify) ou em localhost. Abrir o arquivo direto do celular/computador não funciona.");
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                return falhar("Este navegador não tem suporte a acesso à câmera.");
+            }
+
+            btnCam.innerText = "Carregando Modelos de IA...";
+            btnCam.disabled = true;
+
+            const VISION_VERSAO = "0.10.35";
+            const MODELO_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+            // 1) Carrega a biblioteca de IA atual do Google (MediaPipe Tasks Vision)
+            let HandLandmarker, FilesetResolver;
+            try {
+                const mod = await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_VERSAO}/vision_bundle.mjs`);
+                HandLandmarker = mod.HandLandmarker;
+                FilesetResolver = mod.FilesetResolver;
+            } catch (err) {
+                btnCam.disabled = false;
+                return falhar("Não foi possível carregar a biblioteca de IA. Verifique sua conexão com a internet e recarregue a página.");
+            }
+
+            // 2) Carrega o modelo treinado de reconhecimento de mãos (tenta GPU, cai para CPU se não suportado)
+            try {
+                const vision = await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_VERSAO}/wasm`);
+                const opcoesBase = { runningMode: "VIDEO", numHands: 1 };
+                try {
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        ...opcoesBase,
+                        baseOptions: { modelAssetPath: MODELO_URL, delegate: "GPU" },
+                    });
+                } catch (errGpu) {
+                    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                        ...opcoesBase,
+                        baseOptions: { modelAssetPath: MODELO_URL, delegate: "CPU" },
+                    });
+                }
+            } catch (err) {
+                btnCam.disabled = false;
+                return falhar("Não foi possível carregar o modelo de reconhecimento de mãos. Verifique sua conexão com a internet.");
+            }
+
+            // 3) Liga a câmera do dispositivo
+            btnCam.innerText = "Abrindo Câmera...";
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+            } catch (err) {
+                btnCam.disabled = false;
+                const mensagens = {
+                    'NotAllowedError': "Permissão de câmera negada. Toque no cadeado/ícone ao lado do endereço do site e libere a câmera.",
+                    'NotFoundError': "Nenhuma câmera foi encontrada neste dispositivo.",
+                    'NotReadableError': "A câmera está sendo usada por outro aplicativo. Feche-o e tente novamente.",
+                    'OverconstrainedError': "A câmera do dispositivo não atende aos requisitos solicitados.",
+                };
+                return falhar(mensagens[err.name] || ("Erro ao acessar a câmera: " + err.message));
+            }
+
+            video.srcObject = stream;
+            await video.play();
+
+            cameraOn = true;
+            loopAtivo = true;
+            btnCam.disabled = false;
+            btnCam.style.display = "none";
+            liveTag.classList.add('show');
+
+            setTimeout(() => {
+                if (cameraOn && semMaoDesde !== null && candidatoLetra === null && ultimaLetraConfirmada === null) {
+                    document.getElementById('palavra-formada').innerHTML = "Nenhuma mão detectada ainda. Aproxime bem a mão da câmera, em um ambiente iluminado e com fundo neutro.";
+                }
+            }, 7000);
+
+            function processarQuadro() {
+                if (!loopAtivo) return;
+                if (video.videoWidth > 0) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    try {
+                        const results = handLandmarker.detectForVideo(video, performance.now());
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                        if (results.landmarks && results.landmarks.length > 0) {
+                            const marks = results.landmarks[0];
+                            desenharMao(ctx, marks, canvas.width, canvas.height);
+
+                            semMaoDesde = null;
+                            espacoAutoAdicionado = false;
+
+                            const letra = classificarLetra(marks);
+
+                            if (letra === ultimaLetraConfirmada) {
+                                candidatoLetra = null;
+                                atualizarBarra(0);
+                                mostrarLetraAtual(letra, false);
+                            } else if (letra === "...") {
+                                candidatoLetra = null;
+                                atualizarBarra(0);
+                                mostrarLetraAtual("...", false);
+                            } else if (letra === candidatoLetra) {
+                                const decorrido = Date.now() - inicioCandidato;
+                                atualizarBarra(Math.min(100, (decorrido / TEMPO_CONFIRMACAO_MS) * 100));
+                                mostrarLetraAtual(letra, true);
+                                if (decorrido >= TEMPO_CONFIRMACAO_MS) confirmarLetra(letra);
+                            } else {
+                                candidatoLetra = letra;
+                                inicioCandidato = Date.now();
+                                atualizarBarra(0);
+                                mostrarLetraAtual(letra, false);
+                            }
+                        } else {
+                            resetTudoSemMao();
+                        }
+                    } catch (err) {
+                        console.error("Erro no processamento do quadro:", err);
+                    }
+                }
+                requestAnimationFrame(processarQuadro);
+            }
+            requestAnimationFrame(processarQuadro);
+        }
+    </script>
+</body>
+</html>
